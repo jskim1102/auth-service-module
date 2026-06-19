@@ -1,0 +1,14 @@
+# auth-service runtime dependencies (pinned).
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+sqlalchemy==2.0.36
+asyncpg==0.30.0
+alembic==1.14.0
+authlib==1.4.0
+passlib[argon2]==1.7.4
+pyjwt==2.10.1
+httpx==0.28.1
+aiosmtplib==3.0.2
+slowapi==0.1.9
+pydantic-settings==2.7.1
+email-validator==2.3.0  # pydantic EmailStr — signup/login email format validation (#29, user-requested)

@@ -1,0 +1,9 @@
+# Keep the host's build artifacts and tooling state out of the image — the build
+# stage installs deps and builds fresh inside the container.
+node_modules
+dist
+.gstack
+.git
+.gitignore
+Dockerfile
+.dockerignore

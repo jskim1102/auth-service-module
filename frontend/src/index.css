@@ -1,0 +1,298 @@
+/* Minimal demo styling for the auth-service. Plain CSS, no design-token system.
+   System-font stack with Korean fallbacks (the host project owns real branding). */
+
+:root {
+  --bg: #f4f5f7;
+  --card-bg: #ffffff;
+  --text: #1f2328;
+  --muted: #6b7280;
+  --border: #d4d7dc;
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --ok: #15803d;
+  --error: #b91c1c;
+  --radius: 8px;
+  --gap: 16px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Apple SD Gothic Neo",
+    "Noto Sans KR", "Malgun Gothic", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.app-header {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--card-bg);
+}
+
+.brand {
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.brand-tag {
+  font-size: 12px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.app-main {
+  flex: 1;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  padding: 40px 16px;
+}
+
+.card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 28px 24px;
+}
+
+.card h1 {
+  margin: 0 0 20px;
+  font-size: 22px;
+}
+
+.card-help {
+  margin: -8px 0 16px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.field {
+  display: block;
+  margin-bottom: var(--gap);
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.field input {
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 15px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+}
+
+.field input:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+  border-color: var(--primary);
+}
+
+.btn-primary {
+  width: 100%;
+  min-height: 44px;
+  padding: 11px 16px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--primary);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-primary:hover {
+  background: var(--primary-hover);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.notice {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  font-size: 14px;
+  border-radius: 6px;
+  background: #eef2ff;
+  color: #3730a3;
+}
+
+.notice-ok {
+  background: #ecfdf3;
+  color: var(--ok);
+}
+
+.notice-error {
+  background: #fef2f2;
+  color: var(--error);
+}
+
+.card-links {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 18px 0 0;
+  flex-wrap: wrap;
+}
+
+.card-links a {
+  font-size: 14px;
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.card-links a:hover {
+  text-decoration: underline;
+}
+
+/* --- SNS --- */
+.sns {
+  margin-top: 24px;
+}
+
+.sns-divider {
+  position: relative;
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.sns-divider::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--border);
+}
+
+.sns-divider span {
+  position: relative;
+  background: var(--card-bg);
+  padding: 0 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.sns-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sns-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.sns-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.sns-naver {
+  background: #03c75a;
+  color: #fff;
+}
+.sns-naver .sns-mark {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.sns-kakao {
+  background: #fee500;
+  color: #181600;
+}
+.sns-kakao .sns-mark {
+  background: rgba(0, 0, 0, 0.12);
+}
+
+.sns-google {
+  background: #fff;
+  color: #1f2328;
+  border-color: var(--border);
+}
+.sns-google .sns-mark {
+  background: #f1f3f4;
+}
+
+/* --- /auth/me --- */
+.user-info {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 16px;
+  margin: 0 0 20px;
+  font-size: 15px;
+}
+
+.user-info dt {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.user-info dd {
+  margin: 0;
+  word-break: break-all;
+}
+
+/* --- footer nav --- */
+.app-footer {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  padding: 16px;
+  border-top: 1px solid var(--border);
+  background: var(--card-bg);
+}
+
+.app-footer a {
+  font-size: 14px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.app-footer a.active {
+  color: var(--primary);
+  font-weight: 600;
+}

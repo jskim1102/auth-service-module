@@ -1,0 +1,22 @@
+# Secrets and local environment — never commit (RULES §3/§4.1, F12)
+.env
+
+# Python virtualenv + bytecode
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Frontend dependencies (designer scaffolds frontend/ in phase2)
+node_modules/
+
+# Generated JWT signing keys (private key is a secret; public key is regenerable)
+keys/*.pem
+.gstack/
+
+# Harness tooling internals — not part of the deliverable
+.claude/
+
+# Internal build/process + planning docs — not part of the deliverable
+specs/
+plan.md

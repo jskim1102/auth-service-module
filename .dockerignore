@@ -1,0 +1,13 @@
+# Keep secrets and local cruft out of the auth image build context (#28 P1).
+# Keys are mounted read-only at runtime (compose), never copied into the image.
+keys/
+*.pem
+.env
+.env.*
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.git/
+tests/
+frontend/
