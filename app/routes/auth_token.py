@@ -30,12 +30,12 @@ class RefreshIn(BaseModel):
 @router.post("/token/refresh")
 async def token_refresh(
     response: Response,
-    body: RefreshIn,
+    body: RefreshIn | None = None,
     refresh_cookie: str | None = Cookie(default=None, alias=REFRESH_COOKIE),
     session: AsyncSession = Depends(get_session),
 ):
     # Body wins over cookie (user-confirmed). Pick ONE source — never try both.
-    presented = body.refresh_token or refresh_cookie
+    presented = (body.refresh_token if body else None) or refresh_cookie
     if not presented:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "no refresh token")
 

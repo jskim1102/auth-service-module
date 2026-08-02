@@ -31,7 +31,12 @@ async def send_reset_email(to_email: str, token: str) -> None:
         f"(Or enter this token manually: {token})\n\n"
         "If you did not request this, you can ignore this email."
     )
-    # Optional auth + STARTTLS (real SMTP); empty user/pass + STARTTLS off = MailHog.
+    await _deliver(message)
+
+
+async def _deliver(message: EmailMessage) -> None:
+    """Send via the env-configured SMTP. Optional auth + STARTTLS (real SMTP);
+    empty user/pass + STARTTLS off = MailHog (the demo default)."""
     kwargs = {
         "hostname": os.environ["SMTP_HOST"],
         "port": int(os.environ["SMTP_PORT"]),
@@ -43,3 +48,20 @@ async def send_reset_email(to_email: str, token: str) -> None:
         kwargs["username"] = user
         kwargs["password"] = password
     await aiosmtplib.send(message, **kwargs)
+
+
+async def send_username_email(to_email: str, username: str) -> None:
+    """Email a user their username for account recovery (아이디 찾기). No link/token —
+    a username isn't secret to its owner, and delivery to the registered email IS the
+    ownership check (same trust model as the reset email). Tests mock the send."""
+    message = EmailMessage()
+    message["From"] = os.environ["SMTP_FROM"]
+    message["To"] = to_email
+    message["Subject"] = "Your username"
+    message.set_content(
+        "You requested to recover the username for your account.\n\n"
+        f"Your username is: {username}\n\n"
+        "Sign in with this username (or your email) and your password.\n"
+        "If you did not request this, you can ignore this email."
+    )
+    await _deliver(message)

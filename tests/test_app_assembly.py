@@ -12,6 +12,7 @@ EXPECTED_ROUTES = {
     "/auth/token/refresh",
     "/auth/password/reset-request",
     "/auth/password/reset",
+    "/auth/username/find",
     "/auth/oauth/{provider}/authorize",
     "/auth/oauth/{provider}/callback",
     "/auth/oauth/exchange",

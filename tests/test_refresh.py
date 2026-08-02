@@ -128,10 +128,12 @@ async def test_concurrent_rotation_no_valid_children_explosion(factory, user):
     valid token must NOT mint multiple valid children from a single parent.
 
     The atomic conditional UPDATE lets exactly one caller win; the losers see the
-    parent already revoked and trigger the theft path (chain burn). We assert the
-    SAFE invariants (CTO-corrected): no child explosion, reuse-detection fired, and
-    at most one active token remains — NOT "exactly one" (the chain burn may revoke
-    the winner's child too, which is acceptable for a security module).
+    parent already revoked and trigger the theft path (chain burn). Post-fix
+    invariant: after ANY concurrent replay that raises RefreshError, ZERO active
+    tokens remain in the chain. The atomic parent-revoke + successor-insert forces
+    the loser's UPDATE to block on the winner's row lock; when the winner commits
+    (successor included), the loser re-evaluates → 0 rows → reuse path burns the
+    whole chain, revoking the winner's just-committed successor too. Net: 0 active.
     """
     async with factory() as s0:
         raw = await issue_refresh(s0, user.id)
@@ -158,6 +160,35 @@ async def test_concurrent_rotation_no_valid_children_explosion(factory, user):
         active = [r for r in chain_rows if not r.revoked]
         active_children = [r for r in active if r.token_hash != parent_hash]
         # (a) NO valid-children explosion — the original 8-valid-children defect.
-        assert len(active_children) <= 1
-        # (c) at most one active token in the whole chain.
-        assert len(active) <= 1
+        # Post-fix invariant: the concurrent replay burns the chain, so the winner's
+        # successor is revoked too — ZERO active children survive.
+        assert len(active_children) == 0
+        # (c) ZERO active tokens remain in the whole chain after the burn.
+        assert len(active) == 0
+
+
+@pytest.mark.asyncio
+async def test_issue_refresh_commit_false_defers_persistence(factory, user):
+    """Deterministic witness for the rotate-atomicity fix's mechanism (report #3).
+
+    The fix fuses the parent-revoke and successor-insert into ONE transaction by
+    giving issue_refresh a ``commit=False`` mode: the successor is flushed but NOT
+    committed until rotate_refresh commits both together, so no other transaction
+    can ever observe a committed successor without the committed parent-revoke.
+    This pins that contract — with commit=False the new row is invisible to a
+    SEPARATE connection (its own postgres backend) until the caller commits.
+
+    Unlike test_concurrent_rotation_* (a weak in-process witness — cooperative
+    asyncio always burns the successor, so it passes even on the buggy code), this
+    is a hard RED→GREEN gate: pre-fix issue_refresh had no ``commit`` kwarg, so the
+    call raises TypeError.
+    """
+    async with factory() as writer:
+        raw = await issue_refresh(writer, user.id, commit=False)
+        # Not committed yet → a separate connection (own backend) cannot see it.
+        async with factory() as reader:
+            assert await _row_for(reader, raw) is None
+        await writer.commit()
+    # After the caller commits, the successor is visible everywhere.
+    async with factory() as reader:
+        assert await _row_for(reader, raw) is not None

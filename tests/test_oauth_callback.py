@@ -17,6 +17,7 @@ import uuid
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 
+import httpx
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI
@@ -441,3 +442,103 @@ async def test_callback_missing_code_is_clean_400_not_422(client, factory):
         follow_redirects=False,
     )
     assert resp.status_code == 400
+
+
+# --- provider HTTP-boundary failures must be clean 400s, never 500s (F8 bug) ---
+# These override the autouse _mock_provider in-body: monkeypatch runs AFTER the
+# autouse fixture so the failing fake wins. Each proves an unwrapped provider error
+# (status error / non-JSON body) no longer escapes the callback's ProviderError catch.
+
+
+@pytest.mark.asyncio
+async def test_callback_token_http_error_is_clean_400(client, factory, monkeypatch):
+    # Token exchange POST raises a transport/status error → clean 400, no side effects.
+    class _TokenHTTPErrorClient:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, url, **kwargs):  # token exchange fails
+            raise httpx.HTTPError("boom")
+
+        async def get(self, url, **kwargs):  # never reached
+            return _FakeResp({"sub": "ext-x", "email": "x@e.com", "email_verified": True})
+
+    monkeypatch.setattr(providers.httpx, "AsyncClient", _TokenHTTPErrorClient)
+    raw_state = await _seed_state(factory, "google")
+    resp = await _cb(client, "google", raw_state)
+    assert resp.status_code == 400
+    async with factory() as s:
+        users = (await s.execute(select(User))).scalars().all()
+        codes = (await s.execute(select(OAuthCode))).scalars().all()
+    assert users == [] and codes == []
+
+
+@pytest.mark.asyncio
+async def test_callback_userinfo_http_error_is_clean_400(client, factory, monkeypatch):
+    # Token exchange succeeds, but the userinfo GET raises → clean 400, no side effects.
+    class _UserinfoHTTPErrorClient:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, url, **kwargs):  # token exchange OK
+            return _FakeResp({"access_token": "provider-access-token"})
+
+        async def get(self, url, **kwargs):  # userinfo fetch fails
+            raise httpx.HTTPError("boom")
+
+    monkeypatch.setattr(providers.httpx, "AsyncClient", _UserinfoHTTPErrorClient)
+    raw_state = await _seed_state(factory, "google")
+    resp = await _cb(client, "google", raw_state)
+    assert resp.status_code == 400
+    async with factory() as s:
+        users = (await s.execute(select(User))).scalars().all()
+        codes = (await s.execute(select(OAuthCode))).scalars().all()
+    assert users == [] and codes == []
+
+
+@pytest.mark.asyncio
+async def test_callback_non_json_body_is_clean_400(client, factory, monkeypatch):
+    # Token response body is not JSON (resp.json() raises ValueError) → clean 400.
+    class _NonJSONResp:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            raise ValueError("not json")
+
+    class _NonJSONClient:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, url, **kwargs):  # token body is not JSON
+            return _NonJSONResp()
+
+        async def get(self, url, **kwargs):  # never reached
+            return _FakeResp({"sub": "ext-x", "email": "x@e.com", "email_verified": True})
+
+    monkeypatch.setattr(providers.httpx, "AsyncClient", _NonJSONClient)
+    raw_state = await _seed_state(factory, "google")
+    resp = await _cb(client, "google", raw_state)
+    assert resp.status_code == 400
+    async with factory() as s:
+        users = (await s.execute(select(User))).scalars().all()
+        codes = (await s.execute(select(OAuthCode))).scalars().all()
+    assert users == [] and codes == []

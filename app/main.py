@@ -6,6 +6,7 @@ rewritten). Add new routers/middleware here.
 """
 from fastapi import FastAPI
 
+from app.routes.auth_find import router as auth_find_router
 from app.routes.auth_local import router as auth_local_router
 from app.routes.auth_reset import router as auth_reset_router
 from app.routes.auth_token import router as auth_token_router
@@ -23,8 +24,9 @@ apply_security(app)
 # Local auth (signup / login / logout / token refresh).
 app.include_router(auth_local_router)
 app.include_router(auth_token_router)
-# Password reset.
+# Password reset + username (아이디) recovery.
 app.include_router(auth_reset_router)
+app.include_router(auth_find_router)
 # SNS OAuth (authorize / callback / exchange).
 app.include_router(oauth_router)
 # User info + host verification surface.

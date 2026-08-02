@@ -103,6 +103,16 @@ async def test_refresh_from_cookie_when_no_body(client, factory, user):
 
 
 @pytest.mark.asyncio
+async def test_refresh_from_cookie_no_body_at_all(client, factory, user):
+    async with factory() as s:
+        raw = await issue_refresh(s, user.id)
+    client.cookies.set("refresh_token", raw)  # set on client (per-request is deprecated)
+    resp = await client.post("/auth/token/refresh")  # NO body at all (no json=)
+    assert resp.status_code == 200
+    assert resp.json()["refresh_token"] != raw  # rotated to a new token
+
+
+@pytest.mark.asyncio
 async def test_refresh_access_token_belongs_to_user(client, factory, user):
     async with factory() as s:
         raw = await issue_refresh(s, user.id)

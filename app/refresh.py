@@ -74,8 +74,14 @@ async def issue_refresh(
     *,
     chain_id=None,
     ttl_seconds: int = DEFAULT_REFRESH_TTL,
+    commit: bool = True,
 ) -> str:
-    """Mint a refresh token, store its hash, return the plaintext (once)."""
+    """Mint a refresh token, store its hash, return the plaintext (once).
+
+    When ``commit`` is False the successor row is only flushed into the current
+    transaction; the caller owns the commit. rotate_refresh uses this to fuse the
+    parent-revoke and successor-insert into one atomic commit.
+    """
     raw = secrets.token_urlsafe(32)
     row = RefreshToken(
         token_hash=_hash(raw),
@@ -85,7 +91,8 @@ async def issue_refresh(
         revoked=False,
     )
     session.add(row)
-    await session.commit()
+    if commit:
+        await session.commit()
     return raw
 
 
@@ -98,6 +105,9 @@ async def rotate_refresh(session: AsyncSession, raw_token: str) -> str:
     treated as reuse/theft — the whole chain is revoked and the call raises.
     """
     token_hash = _hash(raw_token)
+    # Conditional revoke WITHOUT an immediate commit: the parent row stays locked
+    # inside this open txn so a concurrent replay-loser blocks on it until we commit
+    # (successor included) — fusing revoke + successor-insert into one atomic step.
     won = (
         await session.execute(
             update(RefreshToken)
@@ -106,10 +116,11 @@ async def rotate_refresh(session: AsyncSession, raw_token: str) -> str:
             .returning(RefreshToken.chain_id, RefreshToken.user_id, RefreshToken.expires_at)
         )
     ).first()
-    await session.commit()
 
     if won is None:
-        # Zero rows: either the token never existed, or it was already revoked.
+        # Zero rows: either the token never existed, or it was already revoked. The
+        # 0-row UPDATE holds no locks, so release the idle txn before the reuse SELECT.
+        await session.rollback()
         existing = (
             await session.execute(
                 select(RefreshToken.chain_id).where(RefreshToken.token_hash == token_hash)
@@ -123,10 +134,15 @@ async def rotate_refresh(session: AsyncSession, raw_token: str) -> str:
 
     chain_id, user_id, expires_at = won
     if expires_at <= _now():
+        # Persist the revoke of the consumed token (matches prior behavior), then raise.
+        await session.commit()
         raise RefreshError("refresh token expired")
 
-    # Winner: mint the successor in the same chain.
-    return await issue_refresh(session, user_id, chain_id=chain_id)
+    # Winner: mint the successor in the same chain, then commit parent-revoke +
+    # successor-insert together so the two can never be seen apart.
+    new_raw = await issue_refresh(session, user_id, chain_id=chain_id, commit=False)
+    await session.commit()
+    return new_raw
 
 
 async def revoke_refresh(session: AsyncSession, raw_token: str) -> None:

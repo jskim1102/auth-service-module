@@ -46,6 +46,10 @@ export const requestPasswordReset = (identifier) =>
 export const resetPassword = (token, new_password) =>
   post('/auth/password/reset', { token, new_password })
 
+// POST /auth/username/find {email} -> 202 (always; identical generic body). If an
+// account with that email has a username, it's emailed there — never in the response.
+export const findUsername = (email) => post('/auth/username/find', { email })
+
 // GET /auth/me (Bearer) -> {id,email,username,identities}
 export const me = (token) => get('/auth/me', token)
 

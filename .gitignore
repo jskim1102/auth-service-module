@@ -14,6 +14,10 @@ node_modules/
 keys/*.pem
 .gstack/
 
+# Host dev runner (dev.sh) — process pids + logs, never commit
+.dev.pids
+.dev-logs/
+
 # Harness tooling internals — not part of the deliverable
 .claude/
 

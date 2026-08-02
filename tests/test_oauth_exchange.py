@@ -10,6 +10,7 @@ import uuid
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 
+import httpx
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI
@@ -17,8 +18,10 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
+import app.oauth.providers as providers
 from app.db import get_session, make_engine
 from app.models import OAuthCode, User
+from app.oauth.providers import ProviderError, exchange_code, fetch_userinfo, get_provider
 from app.routes.oauth import router
 from app.tokens import verify_access
 from tests.test_migration import _async_test_url
@@ -147,3 +150,119 @@ async def test_concurrent_exchange_winner_gets_tokens_never_500(factory):
                 assert verify_access(winner_body["access_token"])["sub"] == str(uid)
     finally:
         await engine.dispose()
+
+
+# --- provider HTTP boundary: wrap raw httpx/JSON failures into ProviderError (F8 bug) ---
+# Unit-level, direct on exchange_code / fetch_userinfo. A raw httpx.HTTPError or a
+# non-JSON body must surface as ProviderError so the callback maps it to a clean 400.
+
+
+class _FakeResp:
+    def __init__(self, payload):
+        self._payload = payload
+
+    def raise_for_status(self):
+        return None
+
+    def json(self):
+        return self._payload
+
+
+class _NonJSONResp:
+    def raise_for_status(self):
+        return None
+
+    def json(self):
+        raise ValueError("not json")
+
+
+@pytest.mark.asyncio
+async def test_exchange_code_http_error_raises_provider_error(monkeypatch):
+    class _Client:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, url, **kwargs):
+            raise httpx.HTTPError("boom")
+
+        async def get(self, url, **kwargs):
+            raise httpx.HTTPError("boom")
+
+    monkeypatch.setattr(providers.httpx, "AsyncClient", _Client)
+    with pytest.raises(ProviderError):
+        await exchange_code(get_provider("google"), "code", "verifier", "http://x/cb")
+
+
+@pytest.mark.asyncio
+async def test_exchange_code_non_json_raises_provider_error(monkeypatch):
+    class _Client:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, url, **kwargs):
+            return _NonJSONResp()
+
+        async def get(self, url, **kwargs):
+            return _NonJSONResp()
+
+    monkeypatch.setattr(providers.httpx, "AsyncClient", _Client)
+    with pytest.raises(ProviderError):
+        await exchange_code(get_provider("google"), "code", "verifier", "http://x/cb")
+
+
+@pytest.mark.asyncio
+async def test_fetch_userinfo_http_error_raises_provider_error(monkeypatch):
+    class _Client:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, url, **kwargs):
+            raise httpx.HTTPError("boom")
+
+        async def get(self, url, **kwargs):
+            raise httpx.HTTPError("boom")
+
+    monkeypatch.setattr(providers.httpx, "AsyncClient", _Client)
+    with pytest.raises(ProviderError):
+        await fetch_userinfo(get_provider("google"), "tok")
+
+
+@pytest.mark.asyncio
+async def test_fetch_userinfo_non_json_raises_provider_error(monkeypatch):
+    class _Client:
+        def __init__(self, *a, **k):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def post(self, url, **kwargs):
+            return _NonJSONResp()
+
+        async def get(self, url, **kwargs):
+            return _NonJSONResp()
+
+    monkeypatch.setattr(providers.httpx, "AsyncClient", _Client)
+    with pytest.raises(ProviderError):
+        await fetch_userinfo(get_provider("google"), "tok")

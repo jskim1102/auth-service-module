@@ -59,6 +59,7 @@ export default function Login() {
 
       <p className="card-links">
         <Link to="/signup">회원가입</Link>
+        <Link to="/find-id">아이디 찾기</Link>
         <Link to="/forgot">비밀번호 찾기</Link>
       </p>
     </section>

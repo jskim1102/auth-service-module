@@ -82,19 +82,24 @@ async def exchange_code(provider: Provider, code: str, code_verifier: str, redir
     Real HTTP — mocked in tests. Returns the provider's raw token JSON.
     """
     async with httpx.AsyncClient(timeout=10) as client:
-        resp = await client.post(
-            provider.token_url,
-            data={
-                "grant_type": "authorization_code",
-                "code": code,
-                "code_verifier": code_verifier,
-                "client_id": provider.client_id,
-                "client_secret": provider.client_secret,
-                "redirect_uri": redirect_uri,
-            },
-        )
-        resp.raise_for_status()
-        return resp.json()
+        try:
+            resp = await client.post(
+                provider.token_url,
+                data={
+                    "grant_type": "authorization_code",
+                    "code": code,
+                    "code_verifier": code_verifier,
+                    "client_id": provider.client_id,
+                    "client_secret": provider.client_secret,
+                    "redirect_uri": redirect_uri,
+                },
+            )
+            resp.raise_for_status()
+            return resp.json()
+        except httpx.HTTPError as exc:
+            raise ProviderError(f"token exchange failed: {exc}") from exc
+        except ValueError as exc:
+            raise ProviderError(f"token response not JSON: {exc}") from exc
 
 
 async def fetch_userinfo(provider: Provider, access_token: str) -> dict:
@@ -105,12 +110,17 @@ async def fetch_userinfo(provider: Provider, access_token: str) -> dict:
     provider-shaped payloads so this normalization actually runs.
     """
     async with httpx.AsyncClient(timeout=10) as client:
-        resp = await client.get(
-            provider.userinfo_url,
-            headers={"Authorization": f"Bearer {access_token}"},
-        )
-        resp.raise_for_status()
-        data = resp.json()
+        try:
+            resp = await client.get(
+                provider.userinfo_url,
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            resp.raise_for_status()
+            data = resp.json()
+        except httpx.HTTPError as exc:
+            raise ProviderError(f"userinfo fetch failed: {exc}") from exc
+        except ValueError as exc:
+            raise ProviderError(f"userinfo not JSON: {exc}") from exc
     return _normalize_userinfo(provider.name, data)
 
 
