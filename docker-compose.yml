@@ -8,7 +8,7 @@ services:
       dockerfile: Dockerfile
     env_file: .env
     ports:
-      - "${BACKEND_PORT}:8003"
+      - "${BACKEND_PORT}:8000"
     # RS256 signing keys injected at runtime, read-only — never baked into the
     # image (#28 P1). JWT_PRIVATE_KEY_PATH / JWT_PUBLIC_KEY_PATH point at /app/keys.
     volumes:
@@ -32,7 +32,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "${FRONTEND_PORT}:5176"
+      - "${FRONTEND_PORT}:80"
     depends_on:
       - auth
 

@@ -32,6 +32,7 @@ export default defineConfig(({ mode, command }) => {
     server: {
       host: '0.0.0.0',
       port,
+      strictPort: true, // 포트 점유 시 자동 +1 점프 금지 — 할당 포트 침범 방지 (RULES §4)
       proxy: isDev
         ? {
             '^/auth/(?!callback(?:$|[/?])).*': {
@@ -44,6 +45,7 @@ export default defineConfig(({ mode, command }) => {
     preview: {
       host: '0.0.0.0',
       port,
+      strictPort: true,
     },
   }
 })

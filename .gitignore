@@ -24,3 +24,6 @@ keys/*.pem
 # Internal build/process + planning docs — not part of the deliverable
 specs/
 plan.md
+
+# --- 대시보드에서 제외 (harness) ---
+/docs/
